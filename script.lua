@@ -1,6 +1,6 @@
 -- Settings
 local HoldClick = true
-local Hotkey = "t"
+local Hotkey = "x"
 local HotkeyToggle = true
 
 -- SCOPE DELAY SETTINGS
