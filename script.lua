@@ -36,7 +36,7 @@ Mouse.KeyUp:Connect(function(key)
 	key = key:lower()
 
 	if not HotkeyToggle and key == Hotkey:lower() then
-		Enabled = false
+		Enabled = true
 	end
 end)
 
