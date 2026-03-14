@@ -4,7 +4,7 @@ local Hotkey = "x"
 local HotkeyToggle = true
 
 -- SCOPE DELAY SETTINGS
-local ScopeDelay = 0.2 -- Delay in seconds after scoping (0 = instant)
+local ScopeDelay = 0.15 -- Delay in seconds after scoping (0 = instant)
 local ScopedIn = false
 local ScopeDelayTime = 0
 
