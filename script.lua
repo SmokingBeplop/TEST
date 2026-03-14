@@ -1,6 +1,6 @@
 -- Settings
 local HoldClick = true
-local Hotkey = "lalt"  -- Changed to Left Alt
+local Hotkey = "x"  -- Changed to Left Alt
 local HotkeyToggle = true
 
 -- SCOPE DELAY SETTINGS
