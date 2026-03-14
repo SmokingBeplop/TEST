@@ -3,6 +3,11 @@ local HoldClick = true
 local Hotkey = "t"
 local HotkeyToggle = true
 
+-- SCOPE DELAY SETTINGS
+local ScopeDelay = 0.15 -- Delay in seconds after scoping (0 = instant)
+local ScopedIn = false
+local ScopeDelayTime = 0
+
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
@@ -14,26 +19,6 @@ local Enabled = false
 local RightClickHeld = false
 local CurrentlyPressed = false
 
--- Function to check if a target is on your team
-local function isTeammate(targetPlayer)
-	if targetPlayer and targetPlayer.Team == LocalPlayer.Team then
-		return true
-	end
-	return false
-end
-
--- Function to get player from any part of their character
-local function getPlayerFromPart(part)
-	if part and part.Parent then
-		local character = part.Parent
-		-- Check if parent has Humanoid (it's a character)
-		if character:FindFirstChild("Humanoid") then
-			return Players:GetPlayerFromCharacter(character)
-		end
-	end
-	return nil
-end
-
 Mouse.KeyDown:Connect(function(key)
 	key = key:lower()
 
@@ -41,8 +26,7 @@ Mouse.KeyDown:Connect(function(key)
 		if HotkeyToggle then
 			Enabled = not Enabled
 			print("Autotrigger:", Enabled and "ON" or "OFF")
-		end
-	else
+		else
 			Enabled = true
 		end
 	end
@@ -59,12 +43,15 @@ end)
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
 	if input.UserInputType == Enum.UserInputType.MouseButton2 then
 		RightClickHeld = true
+		ScopedIn = true
+		ScopeDelayTime = tick() -- Start delay timer when scoping
 	end
 end)
 
 UserInputService.InputEnded:Connect(function(input, gameProcessed)
 	if input.UserInputType == Enum.UserInputType.MouseButton2 then
 		RightClickHeld = false
+		ScopedIn = false
 
 		if HoldClick and CurrentlyPressed then
 			CurrentlyPressed = false
@@ -74,21 +61,11 @@ UserInputService.InputEnded:Connect(function(input, gameProcessed)
 end)
 
 RunService.RenderStepped:Connect(function()
-	if Enabled and RightClickHeld then
-		local targetPart = Mouse.Target
-		if targetPart and targetPart.Parent:FindFirstChild("Humanoid") then
-			local targetPlayer = getPlayerFromPart(targetPart)
-			
-			-- Skip if it's a teammate OR a player (only attack non-players like dummies)
-			if targetPlayer and isTeammate(targetPlayer) then
-				if HoldClick and CurrentlyPressed then
-					CurrentlyPressed = false
-					mouse1release()
-				end
-				return -- Skip teammates
-			end
-			
-			-- Attack anyway (works on dummies AND enemies)
+	if Enabled and RightClickHeld and ScopedIn then
+		-- Check if scope delay has passed
+		local DelayPassed = (tick() - ScopeDelayTime) >= ScopeDelay
+		
+		if Mouse.Target and Mouse.Target.Parent:FindFirstChild("Humanoid") and DelayPassed then
 			if HoldClick then
 				if not CurrentlyPressed then
 					CurrentlyPressed = true
