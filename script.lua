@@ -1,6 +1,5 @@
 -- Settings
 local HoldClick = true
-local Hotkey = "x"  -- Changed to Left Alt
 local HotkeyToggle = true
 
 -- SCOPE DELAY SETTINGS
@@ -19,10 +18,12 @@ local Enabled = true  -- AUTO-TRIGGER ENABLED BY DEFAULT
 local RightClickHeld = false
 local CurrentlyPressed = false
 
-Mouse.KeyDown:Connect(function(key)
-	key = key:lower()
-
-	if key == Hotkey:lower() then
+-- LEFT ALT TOGGLE (Fixed!)
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+	if gameProcessed then return end
+	
+	-- Left Alt toggle
+	if input.KeyCode == Enum.KeyCode.LeftAlt then
 		if HotkeyToggle then
 			Enabled = not Enabled
 			print("Autotrigger:", Enabled and "ON" or "OFF")
@@ -30,21 +31,12 @@ Mouse.KeyDown:Connect(function(key)
 			Enabled = true
 		end
 	end
-end)
-
-Mouse.KeyUp:Connect(function(key)
-	key = key:lower()
-
-	if not HotkeyToggle and key == Hotkey:lower() then
-		Enabled = false
-	end
-end)
-
-UserInputService.InputBegan:Connect(function(input, gameProcessed)
+	
+	-- Right click scope
 	if input.UserInputType == Enum.UserInputType.MouseButton2 then
 		RightClickHeld = true
 		ScopedIn = true
-		ScopeDelayTime = tick() -- Start delay timer when scoping
+		ScopeDelayTime = tick()
 	end
 end)
 
@@ -62,7 +54,6 @@ end)
 
 RunService.RenderStepped:Connect(function()
 	if Enabled and RightClickHeld and ScopedIn then
-		-- Check if scope delay has passed
 		local DelayPassed = (tick() - ScopeDelayTime) >= ScopeDelay
 		
 		if Mouse.Target and Mouse.Target.Parent:FindFirstChild("Humanoid") and DelayPassed then
@@ -88,4 +79,4 @@ RunService.RenderStepped:Connect(function()
 	end
 end)
 
-print("Scope Delay Trigger LOADED - Left Alt to toggle (ON by default)")
+print("Scope Delay Trigger FIXED - Left Alt to toggle (ON by default)")
