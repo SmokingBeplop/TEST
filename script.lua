@@ -22,6 +22,18 @@ local function isTeammate(targetPlayer)
 	return false
 end
 
+-- Function to get player from any part of their character
+local function getPlayerFromPart(part)
+	if part and part.Parent then
+		local character = part.Parent
+		-- Check if parent has Humanoid (it's a character)
+		if character:FindFirstChild("Humanoid") then
+			return Players:GetPlayerFromCharacter(character)
+		end
+	end
+	return nil
+end
+
 Mouse.KeyDown:Connect(function(key)
 	key = key:lower()
 
@@ -29,7 +41,8 @@ Mouse.KeyDown:Connect(function(key)
 		if HotkeyToggle then
 			Enabled = not Enabled
 			print("Autotrigger:", Enabled and "ON" or "OFF")
-		else
+		end
+	else
 			Enabled = true
 		end
 	end
@@ -62,18 +75,20 @@ end)
 
 RunService.RenderStepped:Connect(function()
 	if Enabled and RightClickHeld then
-		if Mouse.Target and Mouse.Target.Parent:FindFirstChild("Humanoid") then
-			local targetPlayer = Players:GetPlayerFromCharacter(Mouse.Target.Parent)
+		local targetPart = Mouse.Target
+		if targetPart and targetPart.Parent:FindFirstChild("Humanoid") then
+			local targetPlayer = getPlayerFromPart(targetPart)
 			
-			-- Skip if it's a teammate
+			-- Skip if it's a teammate OR a player (only attack non-players like dummies)
 			if targetPlayer and isTeammate(targetPlayer) then
 				if HoldClick and CurrentlyPressed then
 					CurrentlyPressed = false
 					mouse1release()
 				end
-				return -- Skip attacking teammates
+				return -- Skip teammates
 			end
 			
+			-- Attack anyway (works on dummies AND enemies)
 			if HoldClick then
 				if not CurrentlyPressed then
 					CurrentlyPressed = true
