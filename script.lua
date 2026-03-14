@@ -1,6 +1,6 @@
 -- Settings
 local HoldClick = true
-local Hotkey = "t"
+local Hotkey = "lalt"  -- Changed to Left Alt
 local HotkeyToggle = true
 
 -- SCOPE DELAY SETTINGS
@@ -15,7 +15,7 @@ local UserInputService = game:GetService("UserInputService")
 local LocalPlayer = Players.LocalPlayer
 local Mouse = LocalPlayer:GetMouse()
 
-local Enabled = false
+local Enabled = true  -- AUTO-TRIGGER ENABLED BY DEFAULT
 local RightClickHeld = false
 local CurrentlyPressed = false
 
@@ -36,7 +36,7 @@ Mouse.KeyUp:Connect(function(key)
 	key = key:lower()
 
 	if not HotkeyToggle and key == Hotkey:lower() then
-		Enabled = true
+		Enabled = false
 	end
 end)
 
@@ -87,3 +87,5 @@ RunService.RenderStepped:Connect(function()
 		end
 	end
 end)
+
+print("Scope Delay Trigger LOADED - Left Alt to toggle (ON by default)")
