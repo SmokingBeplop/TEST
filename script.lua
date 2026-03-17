@@ -1,135 +1,112 @@
--- SNIPER DUELS Auto Trigger + Team Check (X Toggle)
--- Optimized for Sniper Duels specifically
+-- YOUR WORKING SCRIPT + TEAM CHECK (No Friendly Fire)
+-- Settings
+local HoldClick = true
+local Hotkey = "x"
+local HotkeyToggle = true
+
+-- SCOPE DELAY SETTINGS
+local ScopeDelay = 0.15
+local ScopedIn = false
+local ScopeDelayTime = 0
 
 local Players = game:GetService("Players")
-local LocalPlayer = Players.LocalPlayer
 local RunService = game:GetService("RunService")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local UserInputService = game:GetService("UserInputService")
 
--- Sniper Duels Specific Settings
-local MAX_DISTANCE = 1000 -- Longer range for snipers
-local SNIPER_REMOTES = {
-    "Hit",
-    "Damage",
-    "RemoteEvent",
-    "ShootRemote",
-    "FireRemote"
-}
+local LocalPlayer = Players.LocalPlayer
+local Mouse = LocalPlayer:GetMouse()
 
--- Team Check (Sniper Duels uses Teams)
-local function isTeammate(player)
-    if not player or not player.Character or not LocalPlayer.Character then return true end
+local Enabled = false
+local RightClickHeld = false
+local CurrentlyPressed = false
+
+-- TEAM CHECK FUNCTION (NEW!)
+local function isEnemy(targetPlayer)
+    if not targetPlayer or targetPlayer == LocalPlayer then
+        return false
+    end
     
     -- Sniper Duels team check
-    return player.Team == LocalPlayer.Team or player == LocalPlayer
+    return targetPlayer.Team ~= LocalPlayer.Team
 end
 
--- Find closest enemy
-local function getClosestEnemy()
-    local closest, closestDist = nil, MAX_DISTANCE
-    
-    for _, player in pairs(Players:GetPlayers()) do
-        if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
-            if not isTeammate(player) then
-                local distance = (LocalPlayer.Character.HumanoidRootPart.Position - player.Character.HumanoidRootPart.Position).Magnitude
-                if distance < closestDist then
-                    closest = player
-                    closestDist = distance
-                end
-            end
-        end
-    end
-    return closest
-end
-
--- Sniper Duels Hit Function
-local function hitTarget(target)
-    if not target or not target.Character then return end
-    
-    local targetHRP = target.Character.HumanoidRootPart
-    local localHRP = LocalPlayer.Character.HumanoidRootPart
-    
-    -- Sniper Duels remote patterns
-    local args = {
-        targetHRP,
-        localHRP,
-        targetHRP.Position,
-        "Head" -- Aim for headshots
-    }
-    
-    -- Try all common Sniper Duels remotes
-    for _, remoteName in pairs(SNIPER_REMOTES) do
-        pcall(function()
-            local remote = ReplicatedStorage:FindFirstChild(remoteName)
-            if remote and remote:IsA("RemoteEvent") then
-                remote:FireServer(unpack(args))
-            end
-        end)
-    end
-    
-    -- Mouse simulation for click detectors
-    mouse1click()
-    wait(0.01)
-    mouse1release()
-end
-
--- Auto Trigger Loop
-local autoTriggerConnection
-local function startAutoTrigger()
-    if autoTriggerConnection then return end
-    
-    autoTriggerConnection = RunService.Heartbeat:Connect(function()
-        local target = getClosestEnemy()
-        if target then
-            hitTarget(target)
-        end
-    end)
-end
-
-local function stopAutoTrigger()
-    if autoTriggerConnection then
-        autoTriggerConnection:Disconnect()
-        autoTriggerConnection = nil
-    end
-end
-
--- X KEY TOGGLE
-local toggled = false
-game:GetService("UserInputService").InputBegan:Connect(function(input)
-    if input.KeyCode == Enum.KeyCode.X then
-        toggled = not toggled
-        if toggled then
-            startAutoTrigger()
-            print("🎯 SNIPER DUELS AUTO TRIGGER ON - Press X to toggle")
+Mouse.KeyDown:Connect(function(key)
+    key = key:lower()
+    if key == Hotkey:lower() then
+        if HotkeyToggle then
+            Enabled = not Enabled
+            print("Autotrigger:", Enabled and "ON (Team Safe)" or "OFF")
         else
-            stopAutoTrigger()
-            print("❌ SNIPER DUELS AUTO TRIGGER OFF")
+            Enabled = true
         end
     end
 end)
 
--- Enemy ESP (Red for enemies only)
-local function createESP(player)
-    if isTeammate(player) then return end
-    
-    local gui = Instance.new("BillboardGui", player.Character.Head)
-    gui.Size = UDim2.new(0, 100, 0, 50)
-    gui.StudsOffset = Vector3.new(0, 3, 0)
-    
-    local label = Instance.new("TextLabel", gui)
-    label.Size = UDim2.new(1, 0, 1, 0)
-    label.BackgroundTransparency = 1
-    label.Text = player.Name
-    label.TextColor3 = Color3.new(1, 0, 0) -- Red for enemies
-    label.TextStrokeTransparency = 0
-    label.Font = Enum.Font.SourceSansBold
-end
+Mouse.KeyUp:Connect(function(key)
+    key = key:lower()
+    if not HotkeyToggle and key == Hotkey:lower() then
+        Enabled = false
+    end
+end)
 
--- Add ESP to players
-for _, player in pairs(Players:GetPlayers()) do
-    if player.Character then createESP(player) end
-    player.CharacterAdded:Connect(function() wait(1) createESP(player) end)
-end
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if input.UserInputType == Enum.UserInputType.MouseButton2 then
+        RightClickHeld = true
+        ScopedIn = true
+        ScopeDelayTime = tick()
+    end
+end)
 
-print("🎮 SNIPER DUELS Script Loaded!")
-print("Press X to toggle | Red ESP = Enemies Only")
+UserInputService.InputEnded:Connect(function(input, gameProcessed)
+    if input.UserInputType == Enum.UserInputType.MouseButton2 then
+        RightClickHeld = false
+        ScopedIn = false
+        if HoldClick and CurrentlyPressed then
+            CurrentlyPressed = false
+            mouse1release()
+        end
+    end
+end)
+
+RunService.RenderStepped:Connect(function()
+    if Enabled and RightClickHeld and ScopedIn then
+        local DelayPassed = (tick() - ScopeDelayTime) >= ScopeDelay
+        
+        if Mouse.Target and Mouse.Target.Parent:FindFirstChild("Humanoid") then
+            -- NEW TEAM CHECK!
+            local targetPlayer = Players:GetPlayerFromCharacter(Mouse.Target.Parent)
+            
+            -- Only trigger if it's an ENEMY (not teammate)
+            if targetPlayer and isEnemy(targetPlayer) and DelayPassed then
+                if HoldClick then
+                    if not CurrentlyPressed then
+                        CurrentlyPressed = true
+                        mouse1press()
+                        print("🔥 Enemy hit:", targetPlayer.Name) -- Debug
+                    end
+                else
+                    mouse1click()
+                end
+            else
+                -- Release if targeting teammate or no valid target
+                if HoldClick and CurrentlyPressed then
+                    CurrentlyPressed = false
+                    mouse1release()
+                end
+            end
+        else
+            if HoldClick and CurrentlyPressed then
+                CurrentlyPressed = false
+                mouse1release()
+            end
+        end
+    else
+        if HoldClick and CurrentlyPressed then
+            CurrentlyPressed = false
+            mouse1release()
+        end
+    end
+end)
+
+print("🎯 SNIPER DUELS AutoTrigger + TEAM CHECK Loaded!")
+print("Press X to toggle | Won't shoot teammates!"
