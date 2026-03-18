@@ -2,8 +2,7 @@
 local HoldClick = true
 local Hotkey = "x"
 local HotkeyToggle = true
-local TeamCheck = true -- ignores players on your team
-local IgnoreFriendlyNPCs = true -- ignores NPCs with same/friendly team markers
+local TeamCheck = true -- ignore players on your team
 
 -- BASE DELAY SETTINGS
 local MinDelay = 0.05
@@ -24,79 +23,32 @@ local Enabled = false
 local RightClickHeld = false
 local CurrentlyPressed = false
 
--- Flick tracking
 local LastMousePos = Vector2.new(0, 0)
 local FlickSpeed = 0
 
-local function getCharacterFromTarget(target)
-	if not target then
-		return nil
-	end
-	return target:FindFirstAncestorOfClass("Model")
-end
+local function isValidPlayerTarget(target)
+	if not target then return false end
 
-local function getNPCFriendlyState(character)
-	if not character then
-		return false
-	end
-
-	-- Common patterns used by games for NPC team/friendly markers
-	local friendly = character:FindFirstChild("Friendly")
-	local isFriendly = character:FindFirstChild("IsFriendly")
-	local teamValue = character:FindFirstChild("Team")
-	local teamColorValue = character:FindFirstChild("TeamColor")
-
-	if friendly and friendly:IsA("BoolValue") and friendly.Value == true then
-		return true
-	end
-
-	if isFriendly and isFriendly:IsA("BoolValue") and isFriendly.Value == true then
-		return true
-	end
-
-	if teamValue then
-		if teamValue:IsA("ObjectValue") and teamValue.Value == LocalPlayer.Team then
-			return true
-		end
-		if teamValue:IsA("StringValue") and LocalPlayer.Team and teamValue.Value == LocalPlayer.Team.Name then
-			return true
-		end
-	end
-
-	if teamColorValue and LocalPlayer.TeamColor then
-		if teamColorValue:IsA("BrickColorValue") and teamColorValue.Value == LocalPlayer.TeamColor then
-			return true
-		end
-		if teamColorValue:IsA("StringValue") and teamColorValue.Value == tostring(LocalPlayer.TeamColor) then
-			return true
-		end
-	end
-
-	return false
-end
-
-local function isValidEnemyTarget(target)
-	local character = getCharacterFromTarget(target)
-	if not character then
-		return false
-	end
+	local character = target:FindFirstAncestorOfClass("Model")
+	if not character then return false end
 
 	local humanoid = character:FindFirstChildOfClass("Humanoid")
-	if not humanoid or humanoid.Health <= 0 then
-		return false
-	end
+	if not humanoid or humanoid.Health <= 0 then return false end
 
 	local targetPlayer = Players:GetPlayerFromCharacter(character)
-	if targetPlayer then
-		if TeamCheck and targetPlayer.Team == LocalPlayer.Team then
-			return false
-		end
-		return true
+	if not targetPlayer then return false end -- still only players
+
+
+	if targetPlayer == LocalPlayer then
+		return false
 	end
 
-	-- NPC handling
-	if IgnoreFriendlyNPCs and getNPCFriendlyState(character) then
-		return false
+	if TeamCheck then
+		-- compare both Team AND TeamColor (some games only use one)
+		if targetPlayer.Team == LocalPlayer.Team 
+		or targetPlayer.TeamColor == LocalPlayer.TeamColor then
+			return false
+		end
 	end
 
 	return true
@@ -158,7 +110,7 @@ RunService.RenderStepped:Connect(function(dt)
 	if Enabled and RightClickHeld and ScopedIn then
 		local DelayPassed = (tick() - ScopeDelayTime) >= DynamicDelay
 
-		if DelayPassed and isValidEnemyTarget(Mouse.Target) then
+		if DelayPassed and isValidPlayerTarget(Mouse.Target) then
 			if HoldClick then
 				if not CurrentlyPressed then
 					CurrentlyPressed = true
