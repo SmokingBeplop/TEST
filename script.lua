@@ -2,12 +2,12 @@
 local HoldClick = true
 local Hotkey = "x"
 local HotkeyToggle = true
-local TeamCheck = true -- ignore players on your team
+local TeamCheck = true
 
 -- BASE DELAY SETTINGS
-local MinDelay = 0.05   -- fastest possible delay
-local MaxDelay = 0.20   -- slowest delay
-local Sensitivity = 0.002 -- how much flick speed affects delay
+local MinDelay = 0.05
+local MaxDelay = 0.20
+local Sensitivity = 0.002
 
 local ScopedIn = false
 local ScopeDelayTime = 0
@@ -23,13 +23,11 @@ local Enabled = false
 local RightClickHeld = false
 local CurrentlyPressed = false
 
--- Flick tracking
 local LastMousePos = Vector2.new(0, 0)
 local FlickSpeed = 0
 
 Mouse.KeyDown:Connect(function(key)
 	key = key:lower()
-
 	if key == Hotkey:lower() then
 		if HotkeyToggle then
 			Enabled = not Enabled
@@ -42,7 +40,6 @@ end)
 
 Mouse.KeyUp:Connect(function(key)
 	key = key:lower()
-
 	if not HotkeyToggle and key == Hotkey:lower() then
 		Enabled = false
 	end
@@ -60,7 +57,6 @@ UserInputService.InputEnded:Connect(function(input, gameProcessed)
 	if input.UserInputType == Enum.UserInputType.MouseButton2 then
 		RightClickHeld = false
 		ScopedIn = false
-
 		if HoldClick and CurrentlyPressed then
 			CurrentlyPressed = false
 			mouse1release()
@@ -69,13 +65,11 @@ UserInputService.InputEnded:Connect(function(input, gameProcessed)
 end)
 
 RunService.RenderStepped:Connect(function(dt)
-	-- Calculate flick speed
 	local currentPos = UserInputService:GetMouseLocation()
 	local delta = (currentPos - LastMousePos).Magnitude
 	FlickSpeed = delta / (dt > 0 and dt or 1)
 	LastMousePos = currentPos
 
-	-- Convert flick speed into delay
 	local DynamicDelay = math.clamp(
 		MaxDelay - (FlickSpeed * Sensitivity),
 		MinDelay,
@@ -85,10 +79,23 @@ RunService.RenderStepped:Connect(function(dt)
 	if Enabled and RightClickHeld and ScopedIn then
 		local DelayPassed = (tick() - ScopeDelayTime) >= DynamicDelay
 		
-		-- YOUR ORIGINAL DETECTION + TEAM CHECK ONLY
-		if Mouse.Target and Mouse.Target.Parent:FindFirstChild("Humanoid") then
-			-- ADD TEAM CHECK HERE
-			if not TeamCheck or isEnemy(Mouse.Target.Parent) then
+		-- YOUR ORIGINAL EXACT LOGIC + TEAM FILTER
+		local target = Mouse.Target
+		local humanoid = target and target.Parent:FindFirstChild("Humanoid")
+		
+		if humanoid and DelayPassed then
+			-- TEAM CHECK - FIXED FOR REAL PLAYERS
+			local character = humanoid.Parent
+			local targetPlayer = Players:GetPlayerFromCharacter(character)
+			
+			local isValid = true
+			if TeamCheck and targetPlayer then
+				isValid = (targetPlayer ~= LocalPlayer) and 
+						 (targetPlayer.Team ~= LocalPlayer.Team) and 
+						 (targetPlayer.TeamColor ~= LocalPlayer.TeamColor)
+			end
+			
+			if isValid then
 				if HoldClick then
 					if not CurrentlyPressed then
 						CurrentlyPressed = true
@@ -111,18 +118,3 @@ RunService.RenderStepped:Connect(function(dt)
 		end
 	end
 end)
-
--- SIMPLE TEAM CHECK FUNCTION
-function isEnemy(character)
-	local humanoid = character:FindFirstChild("Humanoid")
-	if not humanoid then return true end -- NPCs are enemies
-	
-	local player = Players:GetPlayerFromCharacter(character)
-	if not player then return true end -- NPCs
-	
-	if player == LocalPlayer then return false end
-	
-	-- Check both Team and TeamColor
-	return player.Team ~= LocalPlayer.Team and 
-		   player.TeamColor ~= LocalPlayer.TeamColor
-end
