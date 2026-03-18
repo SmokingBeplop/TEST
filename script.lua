@@ -2,7 +2,6 @@
 local HoldClick = true
 local Hotkey = "x"
 local HotkeyToggle = true
-local TeamCheck = true -- NEW: ignore teammates
 
 -- BASE DELAY SETTINGS
 local MinDelay = 0.05   -- fastest possible delay
@@ -85,21 +84,14 @@ RunService.RenderStepped:Connect(function(dt)
 	if Enabled and RightClickHeld and ScopedIn then
 		local DelayPassed = (tick() - ScopeDelayTime) >= DynamicDelay
 		
-		-- YOUR EXACT LOGIC + TEAM CHECK
 		if Mouse.Target and Mouse.Target.Parent:FindFirstChild("Humanoid") and DelayPassed then
-			local character = Mouse.Target.Parent
-			local humanoid = character:FindFirstChild("Humanoid")
-			
-			-- TEAM CHECK (skip if disabled)
-			if not TeamCheck or not Players:GetPlayerFromCharacter(character) or isEnemy(character) then
-				if HoldClick then
-					if not CurrentlyPressed then
-						CurrentlyPressed = true
-						mouse1press()
-					end
-				else
-					mouse1click()
+			if HoldClick then
+				if not CurrentlyPressed then
+					CurrentlyPressed = true
+					mouse1press()
 				end
+			else
+				mouse1click()
 			end
 		else
 			if HoldClick and CurrentlyPressed then
@@ -114,12 +106,3 @@ RunService.RenderStepped:Connect(function(dt)
 		end
 	end
 end)
-
--- TEAM CHECK FUNCTION
-function isEnemy(character)
-	local player = Players:GetPlayerFromCharacter(character)
-	if not player then return true end -- NPCs ok
-	if player == LocalPlayer then return false end
-	
-	return player.Team ~= LocalPlayer.Team or player.TeamColor ~= LocalPlayer.TeamColor
-end
