@@ -5,9 +5,9 @@ local HotkeyToggle = true
 local TeamCheck = true -- ignore players on your team
 
 -- BASE DELAY SETTINGS
-local MinDelay = 0.05   -- fastest possible delay
-local MaxDelay = 0.20   -- slowest delay
-local Sensitivity = 0.002 -- how much flick speed affects delay
+local MinDelay = 0.05
+local MaxDelay = 0.20
+local Sensitivity = 0.002
 
 local ScopedIn = false
 local ScopeDelayTime = 0
@@ -23,39 +23,41 @@ local Enabled = false
 local RightClickHeld = false
 local CurrentlyPressed = false
 
--- Flick tracking
 local LastMousePos = Vector2.new(0, 0)
 local FlickSpeed = 0
 
--- FIXED: Combined target validation (works with BOTH versions' logic)
 local function isValidTarget(target)
-	if not target then return false end
+	if not target or not target.Parent then return false end
 	
-	-- Original Version 1 logic (fast)
-	local humanoid1 = target.Parent:FindFirstChild("Humanoid")
-	if humanoid1 then
-		return true
-	end
-	
-	-- Enhanced Version 2 logic (safer)
-	local character = target:FindFirstAncestorOfClass("Model")
-	if character then
-		local humanoid2 = character:FindFirstChildOfClass("Humanoid")
-		if humanoid2 and humanoid2.Health > 0 then
-			local targetPlayer = Players:GetPlayerFromCharacter(character)
-			if targetPlayer and targetPlayer ~= LocalPlayer then
-				if not TeamCheck or 
-				   (targetPlayer.Team ~= LocalPlayer.Team and targetPlayer.TeamColor ~= LocalPlayer.TeamColor) then
-					return true
-				end
-			else
-				-- Non-player humanoid (NPCs) - allow if no team check
-				return not TeamCheck
-			end
+	-- QUICK CHECK FIRST (Version 1 style)
+	local humanoid = target.Parent:FindFirstChildOfClass("Humanoid")
+	if not humanoid then 
+		-- Try parent chain for NPCs
+		local parent = target.Parent
+		while parent do
+			humanoid = parent:FindFirstChildOfClass("Humanoid")
+			if humanoid then break end
+			parent = parent.Parent
 		end
 	end
 	
-	return false
+	if not humanoid or humanoid.Health <= 0 then return false end
+	
+	-- TEAM CHECK - CRITICAL FIX
+	if TeamCheck then
+		local character = humanoid.Parent
+		local targetPlayer = Players:GetPlayerFromCharacter(character)
+		if targetPlayer then
+			-- BLOCK SELF AND TEAMMATES
+			if targetPlayer == LocalPlayer then return false end
+			if targetPlayer.Team == LocalPlayer.Team or targetPlayer.TeamColor == LocalPlayer.TeamColor then
+				return false
+			end
+		end
+		-- ALLOW NPCs when TeamCheck is true (non-players pass through)
+	end
+	
+	return true
 end
 
 Mouse.KeyDown:Connect(function(key)
@@ -97,13 +99,11 @@ UserInputService.InputEnded:Connect(function(input, gameProcessed)
 end)
 
 RunService.RenderStepped:Connect(function(dt)
-	-- Calculate flick speed
 	local currentPos = UserInputService:GetMouseLocation()
 	local delta = (currentPos - LastMousePos).Magnitude
 	FlickSpeed = delta / (dt > 0 and dt or 1)
 	LastMousePos = currentPos
 
-	-- Convert flick speed into delay
 	local DynamicDelay = math.clamp(
 		MaxDelay - (FlickSpeed * Sensitivity),
 		MinDelay,
@@ -113,7 +113,7 @@ RunService.RenderStepped:Connect(function(dt)
 	if Enabled and RightClickHeld and ScopedIn then
 		local DelayPassed = (tick() - ScopeDelayTime) >= DynamicDelay
 		
-		-- FIXED: Uses combined validation - works on ALL targets
+		-- FIXED TARGET CHECK
 		if Mouse.Target and isValidTarget(Mouse.Target) and DelayPassed then
 			if HoldClick then
 				if not CurrentlyPressed then
