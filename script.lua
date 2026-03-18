@@ -27,37 +27,29 @@ local LastMousePos = Vector2.new(0, 0)
 local FlickSpeed = 0
 
 local function isValidTarget(target)
-	if not target or not target.Parent then return false end
+	if not target then return false end
 	
-	-- QUICK CHECK FIRST (Version 1 style)
-	local humanoid = target.Parent:FindFirstChildOfClass("Humanoid")
-	if not humanoid then 
-		-- Try parent chain for NPCs
-		local parent = target.Parent
-		while parent do
-			humanoid = parent:FindFirstChildOfClass("Humanoid")
-			if humanoid then break end
-			parent = parent.Parent
-		end
-	end
-	
-	if not humanoid or humanoid.Health <= 0 then return false end
-	
-	-- TEAM CHECK - CRITICAL FIX
-	if TeamCheck then
-		local character = humanoid.Parent
-		local targetPlayer = Players:GetPlayerFromCharacter(character)
-		if targetPlayer then
-			-- BLOCK SELF AND TEAMMATES
-			if targetPlayer == LocalPlayer then return false end
-			if targetPlayer.Team == LocalPlayer.Team or targetPlayer.TeamColor == LocalPlayer.TeamColor then
-				return false
+	-- SIMPLIFIED AND FIXED - Original Version 1 logic FIRST
+	local humanoid = target.Parent:FindFirstChild("Humanoid")
+	if humanoid and humanoid.Health > 0 then
+		-- TEAM CHECK ONLY if it's a player
+		if TeamCheck then
+			local character = humanoid.Parent
+			local targetPlayer = Players:GetPlayerFromCharacter(character)
+			if targetPlayer then
+				-- Skip self and teammates
+				if targetPlayer == LocalPlayer then return false end
+				if targetPlayer.Team == LocalPlayer.Team or 
+				   targetPlayer.TeamColor == LocalPlayer.TeamColor then
+					return false
+				end
 			end
+			-- Non-players (NPCs) are allowed
 		end
-		-- ALLOW NPCs when TeamCheck is true (non-players pass through)
+		return true
 	end
 	
-	return true
+	return false
 end
 
 Mouse.KeyDown:Connect(function(key)
@@ -113,7 +105,7 @@ RunService.RenderStepped:Connect(function(dt)
 	if Enabled and RightClickHeld and ScopedIn then
 		local DelayPassed = (tick() - ScopeDelayTime) >= DynamicDelay
 		
-		-- FIXED TARGET CHECK
+		-- EXACT Version 1 logic + team filter
 		if Mouse.Target and isValidTarget(Mouse.Target) and DelayPassed then
 			if HoldClick then
 				if not CurrentlyPressed then
