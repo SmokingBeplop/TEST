@@ -61,29 +61,26 @@ UserInputService.InputEnded:Connect(function(input, gameProcessed)
 end)
 
 RunService.RenderStepped:Connect(function()
-	if Enabled and RightClickHeld and ScopedIn then
-		-- Check if scope delay has passed
-		local DelayPassed = (tick() - ScopeDelayTime) >= ScopeDelay
-		
-		if Mouse.Target and Mouse.Target.Parent:FindFirstChild("Humanoid") and DelayPassed then
-			if HoldClick then
-				if not CurrentlyPressed then
-					CurrentlyPressed = true
-					mouse1press()
-				end
-			else
-				mouse1click()
-			end
-		else
-			if HoldClick and CurrentlyPressed then
-				CurrentlyPressed = false
-				mouse1release()
-			end
-		end
+	local delayPassed = (tick() - ScopeDelayTime) >= ScopeDelay
+
+	local target = Mouse.Target
+	local character = target and target:FindFirstAncestorOfClass("Model")
+	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+
+	local hasValidAliveTarget =
+		Enabled
+		and RightClickHeld
+		and ScopedIn
+		and delayPassed
+		and humanoid
+		and humanoid.Health > 0
+
+	if hasValidAliveTarget then
+		-- do your legitimate game action here
 	else
 		if HoldClick and CurrentlyPressed then
 			CurrentlyPressed = false
-			mouse1release()
+			-- release/reset logic here
 		end
 	end
 end)
